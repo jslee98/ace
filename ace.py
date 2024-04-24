@@ -1,3 +1,5 @@
+#!/usr/bin/python3
+
 import argparse
 
 from datetime import datetime, timedelta
@@ -57,8 +59,8 @@ def fill_player_info(driver):
     city = get_input(driver, "city")
     city.send_keys(C.city)
 
-    zip = get_input(driver, "zip")
-    zip.send_keys(C.zip)
+    zip_code = get_input(driver, "zip")
+    zip_code.send_keys(C.zip_code)
 
     phone = get_input(driver, "phone")
     phone.send_keys(C.phone)
@@ -149,7 +151,7 @@ def main():
                     print("Error booking", e)
                     continue
                 sleep(3)
-                break
+            break
 
         click_button(driver, "Confirm and Enter Player Details")
         fill_player_info(driver)
@@ -166,13 +168,11 @@ def main():
             except Exception as e:
                 print("Error booking", e)
                 continue
-
             sleep(3)
-
-        driver.get_screenshot_as_file("state.png")
         break
 
     # assert success?
+    driver.get_screenshot_as_file("state.png")
 
     print("Done")
     driver.close()
