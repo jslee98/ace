@@ -15,6 +15,10 @@ CENTRAL_PARK_WINDOW = 30
 ID_TO_WINDOW = {12: CENTRAL_PARK_WINDOW}
 
 
+def log(*content):
+    print("[", datetime.now(), "]", *content)
+
+
 def get_driver():
     options = webdriver.ChromeOptions()
     user_agent = "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/60.0.3112.50 Safari/537.36"
@@ -113,6 +117,7 @@ def main():
     ap.add_argument("-i", "--id", type=int)
     args = ap.parse_args()
 
+    log("Starting up")
     driver = get_driver()
     driver.get(args.link)
 
@@ -122,6 +127,7 @@ def main():
     # Set rebook state + desired window
     rebook = "rebookcp" in args.link
     if rebook:
+        log("Rebook mode on")
         assert args.id, "Need to provide court id for rebooking"
         window = ID_TO_WINDOW[args.id]
     else:
@@ -130,16 +136,16 @@ def main():
     next_date = datetime.now() + timedelta(days=window)
     date = datetime.strftime(next_date, "%Y-%m-%d")
 
-    print(f"Searching for courts on {date} at {args.time}")
+    log(f"Searching for courts on {date} at {args.time}")
     courts = get_available_courts(driver, date, args.time)
     if not courts:
-        print("No courts found.")
+        log("No courts found.")
         exit()
 
-    print(f"Found {len(courts)} courts")
+    log(f"Found {len(courts)} courts")
 
     for link in [get_link(court) for court in courts]:
-        print("Trying", link)
+        log("Trying", link)
         driver.get(link)
         sleep(0.5)
 
@@ -148,7 +154,7 @@ def main():
                 try:
                     click_button(driver, "Make Reservation")
                 except Exception as e:
-                    print("Error booking", e)
+                    log("Error booking", e)
                     continue
                 sleep(3)
             break
@@ -166,7 +172,7 @@ def main():
             try:
                 click_button(driver, "Pay Now")
             except Exception as e:
-                print("Error booking", e)
+                log("Error booking", e)
                 continue
             sleep(3)
         break
@@ -174,7 +180,7 @@ def main():
     # assert success?
     driver.get_screenshot_as_file("state.png")
 
-    print("Done")
+    log("Done")
     driver.close()
 
 
