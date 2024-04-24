@@ -1,0 +1,4 @@
+env.py
+*.png
+*.html
+.DS_Store
