@@ -115,29 +115,44 @@ def main():
     ap.add_argument("-t", "--time", default="12:00 p.m.")
     ap.add_argument("-b", "--book", action="store_true")
     ap.add_argument("-i", "--id", type=int)
+    ap.add_argument("-d", "--date")
     args = ap.parse_args()
 
     log("Starting up")
     driver = get_driver()
-    driver.get(args.link)
+    try:
+        driver.get(args.link)
+    except Exception as e:
+        log(f"Unable to load {args.link}")
+        log(e)
+        exit()
 
     # Wait for page load
     sleep(1)
 
-    # Set rebook state + desired window
-    rebook = "rebookcp" in args.link
-    if rebook:
-        log("Rebook mode on")
-        assert args.id, "Need to provide court id for rebooking"
-        window = ID_TO_WINDOW[args.id]
-    else:
-        window = get_window(args.link)
+    # Set rebook state
+    rebook = "rebookcp" in args.link or "rainedout" in args.link
 
-    next_date = datetime.now() + timedelta(days=window)
-    date = datetime.strftime(next_date, "%Y-%m-%d")
+    date = args.date
+    if not date:
+        if rebook:
+            log("Rebook mode on")
+            assert args.id, "Need to provide court id for rebooking"
+            window = ID_TO_WINDOW[args.id]
+        else:
+            window = get_window(args.link)
 
-    log(f"Searching for courts on {date} at {args.time}")
-    courts = get_available_courts(driver, date, args.time)
+        next_date = datetime.now() + timedelta(days=window)
+        date = datetime.strftime(next_date, "%Y-%m-%d")
+
+    try:
+        log(f"Searching for courts on {date} at {args.time}")
+        courts = get_available_courts(driver, date, args.time)
+    except Exception as e:
+        log(f"Unable find available courts")
+        log(e)
+        exit()
+
     if not courts:
         log("No courts found.")
         exit()
@@ -145,8 +160,14 @@ def main():
     log(f"Found {len(courts)} courts")
 
     for link in [get_link(court) for court in courts]:
-        log("Trying", link)
-        driver.get(link)
+        try:
+            log("Trying", link)
+            driver.get(link)
+        except Exception as e:
+            log(f"Unable to load {link}")
+            log(e)
+            continue
+
         sleep(0.5)
 
         if rebook:
@@ -156,7 +177,8 @@ def main():
                 except Exception as e:
                     log("Error booking", e)
                     continue
-                sleep(3)
+                else:
+                    log("Successfully booked")
             break
 
         click_button(driver, "Confirm and Enter Player Details")
@@ -174,14 +196,15 @@ def main():
             except Exception as e:
                 log("Error booking", e)
                 continue
-            sleep(3)
+            else:
+                log("Successfully booked")
         break
 
     # assert success?
+    sleep(3)
     driver.get_screenshot_as_file("state.png")
-
-    log("Done")
     driver.close()
+    log("Done")
 
 
 if __name__ == "__main__":
