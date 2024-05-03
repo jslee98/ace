@@ -191,11 +191,8 @@ def main():
         fill_payment_info(driver)
 
         if args.book:
-            click_button(driver, "Pay Now")
-            sleep(3)
-
             try:
-                click_button(driver, "Make Reservation")
+                click_button(driver, "Pay Now")
             except Exception as e:
                 log("Error booking", e)
                 continue
