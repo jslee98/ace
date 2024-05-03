@@ -163,46 +163,38 @@ def main():
         try:
             log("Trying", link)
             driver.get(link)
+            sleep(0.5)
+
+            if rebook:
+                # Rebook doesn't need player details
+                if args.book:
+                    click_button(driver, "Make Reservation")
+                    log("Successfully booked")
+                break
+
+            # Fill player details
+            click_button(driver, "Confirm and Enter Player Details")
+            fill_player_info(driver)
+            click_button(driver, "Continue to Payment")
+            sleep(3)
+
+            # Switch to payment iframe
+            driver.switch_to.frame(3)
+            fill_payment_info(driver)
+
+            if args.book:
+                click_button(driver, "Pay Now")
+                log("Successfully booked")
+            break
         except Exception as e:
-            log(f"Unable to load {link}")
+            log(f"Error booking {link}")
             log(e)
+
+            driver.get_screenshot_as_file(f"error-{link}.png")
             continue
 
-        sleep(0.5)
-
-        if rebook:
-            if args.book:
-                try:
-                    click_button(driver, "Make Reservation")
-                except Exception as e:
-                    log("Error booking", e)
-                    continue
-                else:
-                    log("Successfully booked")
-            break
-
-        click_button(driver, "Confirm and Enter Player Details")
-        fill_player_info(driver)
-        click_button(driver, "Continue to Payment")
-        sleep(3)
-
-        # Switch to payment iframe
-        driver.switch_to.frame(3)
-        fill_payment_info(driver)
-
-        if args.book:
-            try:
-                click_button(driver, "Pay Now")
-            except Exception as e:
-                log("Error booking", e)
-                continue
-            else:
-                log("Successfully booked")
-        break
-
-    # assert success?
     sleep(3)
-    driver.get_screenshot_as_file("state.png")
+    driver.get_screenshot_as_file(f"success-{link}.png")
     driver.close()
     log("Done")
 
