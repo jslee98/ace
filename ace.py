@@ -115,10 +115,10 @@ def main():
     ap.add_argument("-t", "--time", default="12:00 p.m.")
     ap.add_argument("-b", "--book", action="store_true")
     ap.add_argument("-i", "--id", type=int)
-    ap.add_argument("-d", "--date")
+    ap.add_argument("-d", "--dates", nargs="+")
     args = ap.parse_args()
 
-    log("Starting up")
+    log("==========Starting up==========")
     driver = get_driver()
     try:
         driver.get(args.link)
@@ -133,8 +133,8 @@ def main():
     # Set rebook state
     rebook = "rebookcp" in args.link or "rainedout" in args.link
 
-    date = args.date
-    if not date:
+    dates = args.dates
+    if not dates:
         if rebook:
             log("Rebook mode on")
             assert args.id, "Need to provide court id for rebooking"
@@ -143,55 +143,69 @@ def main():
             window = get_window(args.link)
 
         next_date = datetime.now() + timedelta(days=window)
-        date = datetime.strftime(next_date, "%Y-%m-%d")
+        dates = [datetime.strftime(next_date, "%Y-%m-%d")]
 
-    try:
-        log(f"Searching for courts on {date} at {args.time}")
-        courts = get_available_courts(driver, date, args.time)
-    except Exception as e:
-        log(f"Unable find available courts")
-        log(e)
-        exit()
+    log(f"Searching for courts on {', '.join(dates)} at {args.time}")
 
-    if not courts:
-        log("No courts found.")
-        exit()
+    for date in dates:
+        reserved = False
 
-    log(f"Found {len(courts)} courts")
-
-    for link in [get_link(court) for court in courts]:
         try:
-            log("Trying", link)
-            driver.get(link)
-            sleep(0.5)
-
-            if rebook:
-                # Rebook doesn't need player details
-                if args.book:
-                    click_button(driver, "Make Reservation")
-                    log("Successfully booked")
-                break
-
-            # Fill player details
-            click_button(driver, "Confirm and Enter Player Details")
-            fill_player_info(driver)
-            click_button(driver, "Continue to Payment")
-            sleep(3)
-
-            # Switch to payment iframe
-            driver.switch_to.frame(3)
-            fill_payment_info(driver)
-
-            if args.book:
-                click_button(driver, "Pay Now")
-                log("Successfully booked")
-            break
+            log("Trying", date)
+            courts = get_available_courts(driver, date, args.time)
         except Exception as e:
-            log(f"Error booking {link}")
+            log(f"Unable find available courts")
             log(e)
-
-            driver.get_screenshot_as_file(f"error-{link}.png")
             continue
+
+        if not courts:
+            log("No courts found.")
+            continue
+
+        log(f"Found {len(courts)} courts")
+
+        for link in [get_link(court) for court in courts]:
+            try:
+                log("Trying", link)
+                driver.get(link)
+                sleep(0.5)
+
+                if rebook:
+                    # Rebook doesn't need player details
+                    if args.book:
+                        click_button(driver, "Make Reservation")
+                        log("Successfully booked")
+                    reserved = True
+                    break
+
+                # Fill player details
+                click_button(driver, "Confirm and Enter Player Details")
+                fill_player_info(driver)
+                click_button(driver, "Continue to Payment")
+                sleep(3)
+
+                # Switch to payment iframe
+                driver.switch_to.frame(3)
+                fill_payment_info(driver)
+
+                if args.book:
+                    click_button(driver, "Pay Now")
+                    log("Successfully booked")
+                reserved = True
+                break
+            except Exception as e:
+                log(f"Error booking {link}")
+                log(e)
+
+                driver.get_screenshot_as_file(f"error-{link}.png")
+                continue
+
+        if reserved:
+            break
+
+    if not reserved:
+        log("No bookings made")
+        exit()
 
     sleep(3)
     driver.get_screenshot_as_file(f"success-{link}.png")
