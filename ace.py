@@ -10,9 +10,16 @@ from time import sleep
 from env import Credentials as C
 
 CENTRAL_PARK_LINK = "https://www.nycgovparks.org/tennisreservation/availability/12"
+CENTRAL_PARK_ID = 12
 CENTRAL_PARK_WINDOW = 30
 
-ID_TO_WINDOW = {12: CENTRAL_PARK_WINDOW}
+MCCARREN_PARK_ID = 11
+MCCARREN_PARK_WINDOW = 7
+
+ID_TO_WINDOW = {
+    CENTRAL_PARK_ID: CENTRAL_PARK_WINDOW,
+    MCCARREN_PARK_ID: MCCARREN_PARK_WINDOW,
+}
 
 
 def log(*content):
@@ -32,9 +39,12 @@ def get_driver():
     return webdriver.Chrome(options=options)
 
 
-def get_window(link):
+def get_id(link):
     parts = link.split("/")
-    id = int(parts[-1])
+    return int(parts[-1])
+
+
+def get_window(link):
     return ID_TO_WINDOW[id]
 
 
@@ -42,17 +52,24 @@ def get_input(driver, id):
     return driver.find_element(by=By.XPATH, value=f"//input[@id='{id}']")
 
 
-def fill_player_info(driver):
+def fill_player_info(driver, court_id):
     num_players = get_input(driver, "num_players_2")
     num_players.click()
 
     sleep(0.5)
 
-    permit_number = get_input(driver, "permit-number1")
-    permit_number.send_keys(C.permit_number)
+    if court_id == CENTRAL_PARK_ID:
+        permit_number = get_input(driver, "permit-number1")
+        permit_number.send_keys(C.permit_number)
 
-    name = get_input(driver, "name1")
-    name.send_keys(C.name)
+        name = get_input(driver, "name1")
+        name.send_keys(C.name)
+    else:
+        num_permits = get_input(driver, "single_play_exist_1")
+        num_permits.click()
+
+        name = get_input(driver, "name")
+        name.send_keys(C.name)
 
     email = get_input(driver, "email")
     email.send_keys(C.email)
@@ -132,16 +149,15 @@ def main():
 
     # Set rebook state
     rebook = "rebookcp" in args.link or "rainedout" in args.link
+    if rebook:
+        log("Rebook mode on")
+        assert args.id, "Need to provide court id for rebooking"
+    elif not args.id:
+        args.id = get_id(args.link)
 
     dates = args.dates
     if not dates:
-        if rebook:
-            log("Rebook mode on")
-            assert args.id, "Need to provide court id for rebooking"
-            window = ID_TO_WINDOW[args.id]
-        else:
-            window = get_window(args.link)
-
+        window = ID_TO_WINDOW[args.id]
         next_date = datetime.now() + timedelta(days=window)
         dates = [datetime.strftime(next_date, "%Y-%m-%d")]
 
@@ -180,7 +196,7 @@ def main():
 
                 # Fill player details
                 click_button(driver, "Confirm and Enter Player Details")
-                fill_player_info(driver)
+                fill_player_info(driver, args.id)
                 click_button(driver, "Continue to Payment")
                 sleep(3)
 
