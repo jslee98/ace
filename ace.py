@@ -213,7 +213,7 @@ def main():
                 log(f"Error booking {link}")
                 log(e)
 
-                driver.get_screenshot_as_file(f"error-{link}.png")
+                driver.get_screenshot_as_file("error.png")
                 continue
 
         if reserved:
@@ -224,7 +224,7 @@ def main():
         exit()
 
     sleep(3)
-    driver.get_screenshot_as_file(f"success-{link}.png")
+    driver.get_screenshot_as_file("success.png")
     driver.close()
     log("Done")
 
