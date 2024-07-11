@@ -129,7 +129,7 @@ def main():
         "--link",
         default=CENTRAL_PARK_LINK,
     )
-    ap.add_argument("-t", "--time", default="12:00 p.m.")
+    ap.add_argument("-t", "--times", default=["12:00 p.m."])
     ap.add_argument("-b", "--book", action="store_true")
     ap.add_argument("-i", "--id", type=int)
     ap.add_argument("-d", "--dates", nargs="+")
@@ -161,60 +161,64 @@ def main():
         next_date = datetime.now() + timedelta(days=window)
         dates = [datetime.strftime(next_date, "%Y-%m-%d")]
 
-    log(f"Searching for courts on {', '.join(dates)} at {args.time}")
+    log(f"Searching for courts on {', '.join(dates)} at {', '.join(args.times)}")
 
-    for date in dates:
-        reserved = False
+    reserved = False
+    for time in args.times:
+        for date in dates:
 
-        try:
-            log("Trying", date)
-            courts = get_available_courts(driver, date, args.time)
-        except Exception as e:
-            log(f"Unable find available courts")
-            log(e)
-            continue
-
-        if not courts:
-            log("No courts found.")
-            continue
-
-        log(f"Found {len(courts)} courts")
-
-        for link in [get_link(court) for court in courts]:
             try:
-                log("Trying", link)
-                driver.get(link)
-                sleep(0.5)
+                log(f"Trying {date} at {time}")
+                courts = get_available_courts(driver, date, time)
+            except Exception as e:
+                log(f"Unable find available courts")
+                log(e)
+                continue
 
-                if rebook:
-                    # Rebook doesn't need player details
+            if not courts:
+                log("No courts found.")
+                continue
+
+            log(f"Found {len(courts)} courts")
+
+            for link in [get_link(court) for court in courts]:
+                try:
+                    log("Trying", link)
+                    driver.get(link)
+                    sleep(0.5)
+
+                    if rebook:
+                        # Rebook doesn't need player details
+                        if args.book:
+                            click_button(driver, "Make Reservation")
+                            log("Successfully booked")
+                        reserved = True
+                        break
+
+                    # Fill player details
+                    click_button(driver, "Confirm and Enter Player Details")
+                    fill_player_info(driver, args.id)
+                    click_button(driver, "Continue to Payment")
+                    sleep(3)
+
+                    # Switch to payment iframe
+                    driver.switch_to.frame(3)
+                    fill_payment_info(driver)
+
                     if args.book:
-                        click_button(driver, "Make Reservation")
+                        click_button(driver, "Pay Now")
                         log("Successfully booked")
                     reserved = True
                     break
+                except Exception as e:
+                    log(f"Error booking {link}")
+                    log(e)
 
-                # Fill player details
-                click_button(driver, "Confirm and Enter Player Details")
-                fill_player_info(driver, args.id)
-                click_button(driver, "Continue to Payment")
-                sleep(3)
+                    driver.get_screenshot_as_file("error.png")
+                    continue
 
-                # Switch to payment iframe
-                driver.switch_to.frame(3)
-                fill_payment_info(driver)
-
-                if args.book:
-                    click_button(driver, "Pay Now")
-                    log("Successfully booked")
-                reserved = True
+            if reserved:
                 break
-            except Exception as e:
-                log(f"Error booking {link}")
-                log(e)
-
-                driver.get_screenshot_as_file("error.png")
-                continue
 
         if reserved:
             break
