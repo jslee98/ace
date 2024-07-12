@@ -129,9 +129,9 @@ def main():
         "--link",
         default=CENTRAL_PARK_LINK,
     )
-    ap.add_argument("-t", "--times", default=["12:00 p.m."])
     ap.add_argument("-b", "--book", action="store_true")
     ap.add_argument("-i", "--id", type=int)
+    ap.add_argument("-t", "--times", nargs="+", default=["12:00 p.m."])
     ap.add_argument("-d", "--dates", nargs="+")
     args = ap.parse_args()
 
